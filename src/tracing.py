@@ -35,33 +35,85 @@ from __future__ import annotations
 import functools
 import logging
 from collections.abc import Callable
+from contextlib import contextmanager
 from typing import Any
-
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
 log = logging.getLogger(__name__)
 
 _SERVICE_NAME = "smart-lost-and-found"
 
 
-def _setup_tracing() -> trace.Tracer:
+# ---------------------------------------------------------------------------
+# Optional OpenTelemetry import
+# ---------------------------------------------------------------------------
+# OpenTelemetry is a *bonus* feature gated by ``ENABLE_TRACING``. Some
+# deployment targets (e.g. Streamlit Cloud with the slim requirements
+# manifest) intentionally do not install the OTel packages. We must not
+# crash the application in that scenario — instead we fall back to a
+# minimal no-op tracer that satisfies the same surface area used in this
+# module: ``start_as_current_span(...)`` as a context manager yielding an
+# object with ``set_attribute`` and ``record_exception``.
+
+try:
+    from opentelemetry import trace as _otel_trace  # type: ignore[import-not-found]
+    from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-not-found]
+    from opentelemetry.sdk.trace.export import (  # type: ignore[import-not-found]
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
+
+    _OTEL_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised only when otel is missing
+    _otel_trace = None  # type: ignore[assignment]
+    TracerProvider = None  # type: ignore[assignment,misc]
+    BatchSpanProcessor = None  # type: ignore[assignment,misc]
+    ConsoleSpanExporter = None  # type: ignore[assignment,misc]
+    _OTEL_AVAILABLE = False
+
+
+class _NoopSpan:
+    """Minimal span stub used when OpenTelemetry is not installed."""
+
+    def set_attribute(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    def record_exception(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
+class _NoopTracer:
+    """Tracer stub that yields :class:`_NoopSpan` for every span context."""
+
+    @contextmanager
+    def start_as_current_span(self, _name: str):  # type: ignore[no-untyped-def]
+        yield _NoopSpan()
+
+
+def _setup_tracing():
     """Configure the global tracer based on settings.
 
-    When tracing is disabled, the returned tracer has no exporters and
-    silently discards every span — that is the production default.
+    When tracing is disabled — or the OTel libraries are not installed —
+    the returned tracer silently discards every span. Production
+    deployments that opt in (``ENABLE_TRACING=true``) export OTLP spans
+    when the exporter package is available, falling back to the console
+    exporter otherwise.
 
     Returns:
-        The module-level :class:`Tracer` callers should use to open spans.
+        The module-level tracer callers should use to open spans.
     """
     from src.config import settings
+
+    if not _OTEL_AVAILABLE:
+        log.debug("tracing.opentelemetry_not_installed_using_noop_tracer")
+        return _NoopTracer()
 
     provider = TracerProvider()
 
     if settings.ENABLE_TRACING:
         try:
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # type: ignore[import-not-found]
+                OTLPSpanExporter,
+            )
 
             exporter = OTLPSpanExporter(endpoint=settings.OTLP_ENDPOINT, insecure=True)
             provider.add_span_processor(BatchSpanProcessor(exporter))
@@ -72,12 +124,16 @@ def _setup_tracing() -> trace.Tracer:
     else:
         log.debug("tracing.disabled")
 
-    trace.set_tracer_provider(provider)
-    return trace.get_tracer(_SERVICE_NAME)
+    _otel_trace.set_tracer_provider(provider)
+    return _otel_trace.get_tracer(_SERVICE_NAME)
 
 
-tracer: trace.Tracer = _setup_tracing()
-"""Process-wide tracer; import this wherever spans are needed."""
+tracer = _setup_tracing()
+"""Process-wide tracer; import this wherever spans are needed.
+
+Type is intentionally untyped: it is either ``opentelemetry.trace.Tracer``
+when the OTel libs are installed, or :class:`_NoopTracer` otherwise.
+"""
 
 
 def traced_ai_call(
