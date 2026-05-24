@@ -1,0 +1,71 @@
+# ============================================================
+# .gitignore for the Streamlit Cloud DEPLOY repository
+# ============================================================
+# Rename this file to ".gitignore" inside the deploy repo.
+# Unlike the dev .gitignore, this one COMMITS dev.db and the
+# data/images/ folder so the deployed app shows pre-seeded
+# lost & found items immediately.
+# ============================================================
+
+# --- Secrets (NEVER commit these) ---
+.env
+.env.local
+.env.*.local
+*.env
+.streamlit/secrets.toml
+
+# --- Python build artefacts ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Test/coverage caches ---
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+.mypy_cache/
+.ruff_cache/
+.pyright/
+
+# --- Runtime artefacts (writable on Streamlit Cloud, ephemeral) ---
+artefacts/*.log
+artefacts/*.jsonl
+artefacts/*.txt
+
+# --- OS / editor files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# --- Misc ---
+*.tar
+report/*.pdf
+report/*.aux
+report/*.log
+report/*.out
+slides/*.pdf
+
+# ============================================================
+# Things we DO commit (intentionally NOT ignored):
+#   - dev.db                  → pre-seeded sample database
+#   - data/images/            → sample image files
+#   - data/samples/           → original sample inputs
+#   - .streamlit/config.toml  → Streamlit theme/server config
+#   - .streamlit/secrets.toml.example  → secrets template
+# ============================================================

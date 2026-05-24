@@ -1,0 +1,26 @@
+[server]
+# Cap file uploads to match settings.MAX_IMAGE_BYTES (5 MB).
+maxUploadSize = 5
+headless = true
+# File watchers can spike memory on small Streamlit Cloud instances.
+fileWatcherType = "none"
+enableXsrfProtection = true
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F4F6"
+textColor = "#111827"
+font = "sans serif"
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[runner]
+fastReruns = true

@@ -1,0 +1,29 @@
+# ============================================================
+# Smart Lost & Found — Streamlit Cloud deployment requirements
+# Trimmed for faster cold starts: no FastAPI server, no
+# PostgreSQL, no Anthropic/Gemini SDKs (OpenAI only).
+# Rename to "requirements.txt" inside the deploy repo.
+# ============================================================
+
+# --- Streamlit UI ---
+streamlit==1.32.2
+
+# --- Data validation & settings ---
+pydantic==2.6.4
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+
+# --- AI provider (OpenAI only) ---
+openai==1.30.5
+
+# --- Numerical / AI ---
+numpy==1.26.4
+
+# --- Resilience ---
+tenacity==8.2.3
+
+# --- Async SQLite storage ---
+aiosqlite==0.20.0
+
+# --- HTTP client (used by openai SDK) ---
+httpx==0.27.0
